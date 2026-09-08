@@ -23,3 +23,11 @@ body {
   margin: 0 auto;
   padding: 0 1rem;
 }
+
+.text-danger {
+  color: #ef4444;
+}
+
+.text-success {
+  color: #10b981;
+}
