@@ -58,6 +58,12 @@ body {
   opacity: 0.85;
 }
 
+.app-message-error {
+  color: #ef4444;
+  font-weight: 500;
+  animation: fadeIn 0.15s ease-in;
+}
+
 /* ==========================================================================
    Navbar e Gaveta Lateral (Drawer)
    ========================================================================== */

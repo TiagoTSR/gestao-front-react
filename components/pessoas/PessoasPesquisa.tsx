@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
@@ -18,6 +19,7 @@ const PESSOAS_INICIAIS: Pessoa[] = [
 ];
 
 export function PessoasPesquisa() {
+  const router = useRouter();
   const [nomeFiltro, setNomeFiltro] = useState('');
   const [pessoas, setPessoas] = useState<Pessoa[]>(PESSOAS_INICIAIS);
 
@@ -143,6 +145,7 @@ export function PessoasPesquisa() {
               label="Nova Pessoa"
               icon="pi pi-plus"
               severity="success"
+              onClick={() => router.push('/pessoas/nova')}
               className="w-auto"
             />
           </div>
