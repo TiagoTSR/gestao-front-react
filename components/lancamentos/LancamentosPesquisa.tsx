@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
@@ -68,6 +69,7 @@ const LANCAMENTOS_INICIAIS: Lancamento[] = [
 ];
 
 export function LancamentosPesquisa() {
+  const router = useRouter();
   const [descricaoFiltro, setDescricaoFiltro] = useState('');
   const [dataVencimentoDe, setDataVencimentoDe] = useState('');
   const [dataVencimentoAte, setDataVencimentoAte] = useState('');
@@ -215,6 +217,7 @@ export function LancamentosPesquisa() {
                 label="Novo Lançamento"
                 icon="pi pi-plus"
                 severity="success"
+                onClick={() => router.push('/lancamentos/novo')}
                 className="w-auto"
               />
             </div>
