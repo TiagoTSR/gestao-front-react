@@ -1,12 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { InputText } from 'primereact/inputtext';
 import { InputMask } from 'primereact/inputmask';
 import { Button } from 'primereact/button';
+import { Toast } from 'primereact/toast';
 import { Message } from '../message/Message';
-import { PessoaForm } from '../../types/pessoa';
+import { PessoaForm, CriarPessoaRequest } from '@/models';
+import { PessoaService } from '@/services';
 
 const FORM_INICIAL: PessoaForm = {
   nome: '',
@@ -27,9 +29,12 @@ interface PessoaCadastroProps {
 
 export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
   const router = useRouter();
+  const toast = useRef<Toast>(null);
+
   const [pessoa, setPessoa] = useState<PessoaForm>(FORM_INICIAL);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [salvando, setSalvando] = useState(false);
 
   const markTouched = (field: string) => {
     setTouched((prev) => ({ ...prev, [field]: true }));
@@ -61,17 +66,63 @@ export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
     errors.estadoRequired ||
     errors.estadoMinLength;
 
-  const salvar = (e: React.FormEvent) => {
+  const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitted(true);
 
     if (isFormInvalid) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Atenção',
+        detail: 'Preencha todos os campos obrigatórios corretamente.',
+        life: 3000,
+      });
       return;
     }
 
+    setSalvando(true);
     console.log('Salvando pessoa:', pessoa);
-    if (onSalvar) {
-      onSalvar(pessoa);
+    try {
+      if (onSalvar) {
+        onSalvar(pessoa);
+      } else {
+        const payload: CriarPessoaRequest = {
+          nome: pessoa.nome,
+          ativo: pessoa.ativo,
+          endereco: {
+            logradouro: pessoa.logradouro,
+            numero: pessoa.numero || null,
+            complemento: pessoa.complemento || null,
+            bairro: pessoa.bairro,
+            cep: pessoa.cep,
+            cidade: pessoa.cidade,
+            estado: pessoa.estado,
+          },
+        };
+
+        await PessoaService.criar(payload);
+
+        toast.current?.show({
+          severity: 'success',
+          summary: 'Sucesso',
+          detail: 'Pessoa cadastrada com sucesso!',
+          life: 2500,
+        });
+
+        setTimeout(() => {
+          router.push('/pessoas');
+        }, 800);
+      }
+    } catch (error) {
+      console.error('Erro ao cadastrar pessoa:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Erro',
+        detail: 'Não foi possível cadastrar a pessoa.',
+        life: 4000,
+      });
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -92,6 +143,7 @@ export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
 
   return (
     <div className="container py-4">
+      <Toast ref={toast} />
       <div className="surface-card p-4 shadow-1 border-round">
         {/* Cabeçalho */}
         <div className="mb-4">
@@ -106,7 +158,7 @@ export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
             {/* Nome */}
             <div className="field col-12">
               <label htmlFor="nome" className="font-semibold text-700 block mb-2">
-                Nome
+                Nome *
               </label>
               <InputText
                 id="nome"
@@ -130,7 +182,7 @@ export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
             {/* Logradouro */}
             <div className="field col-12 md:col-9">
               <label htmlFor="logradouro" className="font-semibold text-700 block mb-2">
-                Logradouro
+                Logradouro *
               </label>
               <InputText
                 id="logradouro"
@@ -152,7 +204,7 @@ export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
             {/* Número */}
             <div className="field col-12 md:col-3">
               <label htmlFor="numero" className="font-semibold text-700 block mb-2">
-                Número
+                Número *
               </label>
               <InputText
                 id="numero"
@@ -189,7 +241,7 @@ export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
             {/* Bairro */}
             <div className="field col-12 md:col-4">
               <label htmlFor="bairro" className="font-semibold text-700 block mb-2">
-                Bairro
+                Bairro *
               </label>
               <InputText
                 id="bairro"
@@ -226,7 +278,7 @@ export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
             {/* Cidade */}
             <div className="field col-12 md:col-6">
               <label htmlFor="cidade" className="font-semibold text-700 block mb-2">
-                Cidade
+                Cidade *
               </label>
               <InputText
                 id="cidade"
@@ -250,7 +302,7 @@ export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
             {/* Estado */}
             <div className="field col-12 md:col-6">
               <label htmlFor="estado" className="font-semibold text-700 block mb-2">
-                Estado (UF)
+                Estado (UF) *
               </label>
               <InputText
                 id="estado"
@@ -282,6 +334,7 @@ export function PessoaCadastro({ onSalvar, onVoltar }: PessoaCadastroProps) {
                 type="submit"
                 label="Salvar"
                 icon="pi pi-check"
+                loading={salvando}
                 disabled={submitted && isFormInvalid}
                 className="w-auto"
               />

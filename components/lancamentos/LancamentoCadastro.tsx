@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { SelectButton } from 'primereact/selectbutton';
 import { Calendar } from 'primereact/calendar';
@@ -9,27 +9,27 @@ import { InputNumber } from 'primereact/inputnumber';
 import { Dropdown } from 'primereact/dropdown';
 import { InputTextarea } from 'primereact/inputtextarea';
 import { Button } from 'primereact/button';
-import { LancamentoForm, TipoLancamento } from '../../types/lancamento';
+import { Toast } from 'primereact/toast';
+import { TipoLancamento, CriarLancamentoRequest } from '@/models';
+import { CategoriaService, PessoaService, LancamentoService } from '@/services';
 
 export const TIPOS_LANCAMENTO: { label: string; value: TipoLancamento }[] = [
   { label: 'Receita', value: 'RECEITA' },
   { label: 'Despesa', value: 'DESPESA' },
 ];
 
-export const CATEGORIAS_MOCK = [
-  { label: 'Alimentação', value: 1 },
-  { label: 'Transporte', value: 2 },
-  { label: 'Saúde', value: 3 },
-  { label: 'Educação', value: 4 },
-];
+export interface LancamentoFormState {
+  tipo: TipoLancamento;
+  dataVencimento: Date | null;
+  dataPagamento: Date | null;
+  descricao: string;
+  valor: number | null;
+  categoriaId: number | null;
+  pessoaId: number | null;
+  observacao: string;
+}
 
-export const PESSOAS_MOCK = [
-  { label: 'João da Silva', value: 4 },
-  { label: 'Sebastião Souza', value: 9 },
-  { label: 'Maria Abadia', value: 3 },
-];
-
-const FORM_INICIAL: LancamentoForm = {
+const FORM_INICIAL: LancamentoFormState = {
   tipo: 'DESPESA',
   dataVencimento: null,
   dataPagamento: null,
@@ -41,19 +41,148 @@ const FORM_INICIAL: LancamentoForm = {
 };
 
 interface LancamentoCadastroProps {
-  onSalvar?: (lancamento: LancamentoForm) => void;
+  onSalvar?: (lancamento: LancamentoFormState) => void;
   onVoltar?: () => void;
 }
 
 export function LancamentoCadastro({ onSalvar, onVoltar }: LancamentoCadastroProps) {
   const router = useRouter();
-  const [lancamento, setLancamento] = useState<LancamentoForm>(FORM_INICIAL);
+  const toast = useRef<Toast>(null);
 
-  const salvar = (e: React.FormEvent) => {
+  const [lancamento, setLancamento] = useState<LancamentoFormState>(FORM_INICIAL);
+  const [categorias, setCategorias] = useState<{ label: string; value: number }[]>([]);
+  const [pessoas, setPessoas] = useState<{ label: string; value: number }[]>([]);
+  const [salvando, setSalvando] = useState(false);
+
+  useEffect(() => {
+    async function carregarDropdowns() {
+      try {
+        const [listaCategorias, resultadoPessoas] = await Promise.all([
+          CategoriaService.listar(),
+          PessoaService.listar({}, { tamanho: 100 }),
+        ]);
+
+        setCategorias(
+          (listaCategorias || []).map((c) => ({
+            label: c.nome,
+            value: c.id!,
+          }))
+        );
+
+        setPessoas(
+          (resultadoPessoas.conteudo || []).map((p) => ({
+            label: p.nome,
+            value: p.id!,
+          }))
+        );
+      } catch (error) {
+        console.error('Erro ao carregar categorias ou pessoas:', error);
+      }
+    }
+
+    carregarDropdowns();
+  }, []);
+
+  const formatarDataParaIso = (data: Date | null): string => {
+    if (!data) return '';
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+  };
+
+  const salvar = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log('Salvando lançamento:', lancamento);
+
     if (onSalvar) {
       onSalvar(lancamento);
+      return;
+    }
+
+    if (!lancamento.descricao.trim()) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Atenção',
+        detail: 'Informe a descrição.',
+        life: 3000,
+      });
+      return;
+    }
+    if (!lancamento.dataVencimento) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Atenção',
+        detail: 'Informe a data de vencimento.',
+        life: 3000,
+      });
+      return;
+    }
+    if (!lancamento.valor || lancamento.valor <= 0) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Atenção',
+        detail: 'Informe um valor válido.',
+        life: 3000,
+      });
+      return;
+    }
+    if (!lancamento.categoriaId) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Atenção',
+        detail: 'Selecione uma categoria.',
+        life: 3000,
+      });
+      return;
+    }
+    if (!lancamento.pessoaId) {
+      toast.current?.show({
+        severity: 'warn',
+        summary: 'Atenção',
+        detail: 'Selecione uma pessoa.',
+        life: 3000,
+      });
+      return;
+    }
+
+    setSalvando(true);
+    try {
+      const payload: CriarLancamentoRequest = {
+        descricao: lancamento.descricao,
+        data_vencimento: formatarDataParaIso(lancamento.dataVencimento),
+        data_pagamento: lancamento.dataPagamento
+          ? formatarDataParaIso(lancamento.dataPagamento)
+          : null,
+        valor: lancamento.valor,
+        observacao: lancamento.observacao || null,
+        tipo: lancamento.tipo,
+        categoria_id: lancamento.categoriaId,
+        pessoa_id: lancamento.pessoaId,
+      };
+
+      await LancamentoService.criar(payload);
+
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Sucesso',
+        detail: 'Lançamento salvo com sucesso!',
+        life: 2500,
+      });
+
+      setTimeout(() => {
+        router.push('/lancamentos');
+      }, 800);
+    } catch (error) {
+      console.error('Erro ao salvar lançamento:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Erro',
+        detail: 'Não foi possível salvar o lançamento.',
+        life: 4000,
+      });
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -72,6 +201,7 @@ export function LancamentoCadastro({ onSalvar, onVoltar }: LancamentoCadastroPro
 
   return (
     <div className="container py-4">
+      <Toast ref={toast} />
       <div className="surface-card p-4 shadow-1 border-round">
         {/* Cabeçalho */}
         <div className="mb-4">
@@ -97,7 +227,7 @@ export function LancamentoCadastro({ onSalvar, onVoltar }: LancamentoCadastroPro
             {/* Vencimento */}
             <div className="field col-12 md:col-3">
               <label htmlFor="vencimento" className="font-semibold text-700 block mb-2">
-                Vencimento
+                Vencimento *
               </label>
               <Calendar
                 id="vencimento"
@@ -136,7 +266,7 @@ export function LancamentoCadastro({ onSalvar, onVoltar }: LancamentoCadastroPro
             {/* Descrição */}
             <div className="field col-12 md:col-9">
               <label htmlFor="descricao" className="font-semibold text-700 block mb-2">
-                Descrição
+                Descrição *
               </label>
               <InputText
                 id="descricao"
@@ -152,7 +282,7 @@ export function LancamentoCadastro({ onSalvar, onVoltar }: LancamentoCadastroPro
             {/* Valor */}
             <div className="field col-12 md:col-3">
               <label htmlFor="valor" className="font-semibold text-700 block mb-2">
-                Valor
+                Valor *
               </label>
               <InputNumber
                 id="valor"
@@ -171,12 +301,12 @@ export function LancamentoCadastro({ onSalvar, onVoltar }: LancamentoCadastroPro
             {/* Categoria */}
             <div className="field col-12 md:col-6">
               <label htmlFor="categoria" className="font-semibold text-700 block mb-2">
-                Categoria
+                Categoria *
               </label>
               <Dropdown
                 id="categoria"
                 value={lancamento.categoriaId}
-                options={CATEGORIAS_MOCK}
+                options={categorias}
                 onChange={(e) =>
                   setLancamento((prev) => ({ ...prev, categoriaId: e.value }))
                 }
@@ -190,12 +320,12 @@ export function LancamentoCadastro({ onSalvar, onVoltar }: LancamentoCadastroPro
             {/* Pessoa */}
             <div className="field col-12 md:col-6">
               <label htmlFor="pessoa" className="font-semibold text-700 block mb-2">
-                Pessoa
+                Pessoa *
               </label>
               <Dropdown
                 id="pessoa"
                 value={lancamento.pessoaId}
-                options={PESSOAS_MOCK}
+                options={pessoas}
                 onChange={(e) =>
                   setLancamento((prev) => ({ ...prev, pessoaId: e.value }))
                 }
@@ -229,6 +359,7 @@ export function LancamentoCadastro({ onSalvar, onVoltar }: LancamentoCadastroPro
                 type="submit"
                 label="Salvar"
                 icon="pi pi-check"
+                loading={salvando}
                 className="w-auto"
               />
               <Button

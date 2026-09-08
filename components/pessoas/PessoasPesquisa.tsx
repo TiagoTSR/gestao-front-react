@@ -1,59 +1,127 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tooltip } from 'primereact/tooltip';
-import { Pessoa } from '../../types/pessoa';
-
-const PESSOAS_INICIAIS: Pessoa[] = [
-  { nome: 'Manoel Pinheiro', cidade: 'Uberlândia', estado: 'MG', ativo: true },
-  { nome: 'Sebastião da Silva', cidade: 'São Paulo', estado: 'SP', ativo: false },
-  { nome: 'Carla Souza', cidade: 'Florianópolis', estado: 'SC', ativo: true },
-  { nome: 'Luís Pereira', cidade: 'Curitiba', estado: 'PR', ativo: true },
-  { nome: 'Vilmar Andrade', cidade: 'Rio de Janeiro', estado: 'RJ', ativo: false },
-  { nome: 'Paula Maria', cidade: 'Uberlândia', estado: 'MG', ativo: true },
-];
+import { Toast } from 'primereact/toast';
+import { Pessoa, PageResult } from '@/models';
+import { PessoaService } from '@/services';
 
 export function PessoasPesquisa() {
   const router = useRouter();
+  const toast = useRef<Toast>(null);
+
   const [nomeFiltro, setNomeFiltro] = useState('');
-  const [pessoas, setPessoas] = useState<Pessoa[]>(PESSOAS_INICIAIS);
+  const [pessoas, setPessoas] = useState<Pessoa[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pagina, setPagina] = useState(0);
+  const [linhas, setLinhas] = useState(5);
+
+  const carregarPessoas = useCallback(
+    async (page = 0, size = 5) => {
+      setLoading(true);
+      try {
+        const resultado: PageResult<Pessoa> = await PessoaService.listar(
+          {
+            nome: nomeFiltro || undefined,
+          },
+          {
+            pagina: page,
+            tamanho: size,
+          }
+        );
+        setPessoas(resultado.conteudo || []);
+        setTotalRecords(resultado.total_elementos || 0);
+      } catch (error) {
+        console.error('Erro ao carregar pessoas do backend:', error);
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Erro',
+          detail: 'Não foi possível carregar as pessoas.',
+          life: 4000,
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [nomeFiltro]
+  );
+
+  useEffect(() => {
+    carregarPessoas(pagina, linhas);
+  }, [carregarPessoas, pagina, linhas]);
 
   const handlePesquisar = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Pesquisando pessoas por nome:', nomeFiltro);
-
-    if (!nomeFiltro.trim()) {
-      setPessoas(PESSOAS_INICIAIS);
-      return;
-    }
-
-    const filtradas = PESSOAS_INICIAIS.filter((p) =>
-      p.nome.toLowerCase().includes(nomeFiltro.toLowerCase())
-    );
-    setPessoas(filtradas);
+    setPagina(0);
+    carregarPessoas(0, linhas);
   };
 
   const handleLimpar = () => {
     setNomeFiltro('');
-    setPessoas(PESSOAS_INICIAIS);
+    setPagina(0);
   };
 
-  const alternarStatus = (pessoa: Pessoa) => {
-    setPessoas((lista) =>
-      lista.map((p) => (p === pessoa ? { ...p, ativo: !p.ativo } : p))
-    );
+  const alternarStatus = async (pessoa: Pessoa) => {
+    if (!pessoa.id) return;
+    const novoStatus = !pessoa.ativo;
+
+    try {
+      await PessoaService.atualizarAtivo(pessoa.id, novoStatus);
+      setPessoas((lista) =>
+        lista.map((p) => (p.id === pessoa.id ? { ...p, ativo: novoStatus } : p))
+      );
+      toast.current?.show({
+        severity: 'info',
+        summary: 'Status Atualizado',
+        detail: `Pessoa "${pessoa.nome}" ${novoStatus ? 'ativada' : 'desativada'} com sucesso!`,
+        life: 3000,
+      });
+    } catch (error) {
+      console.error('Erro ao alternar status da pessoa:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Erro',
+        detail: 'Não foi possível alterar o status da pessoa.',
+        life: 4000,
+      });
+    }
+  };
+
+  const handleExcluir = async (pessoa: Pessoa) => {
+    if (!pessoa.id) return;
+    if (!confirm(`Deseja realmente excluir a pessoa "${pessoa.nome}"?`)) return;
+
+    try {
+      await PessoaService.remover(pessoa.id);
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Sucesso',
+        detail: 'Pessoa excluída com sucesso!',
+        life: 3000,
+      });
+      carregarPessoas(pagina, linhas);
+    } catch (error) {
+      console.error('Erro ao excluir pessoa:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Erro',
+        detail: 'Erro ao excluir a pessoa. Verifique se ela possui lançamentos vinculados.',
+        life: 4000,
+      });
+    }
   };
 
   const statusBodyTemplate = (rowData: Pessoa) => {
     const isAtivo = rowData.ativo;
     return (
       <a
-        href="#"
+        href="javascript:void(0)"
         onClick={(e) => {
           e.preventDefault();
           alternarStatus(rowData);
@@ -91,7 +159,7 @@ export function PessoasPesquisa() {
           aria-label="Excluir"
           tooltip="Excluir"
           tooltipOptions={{ position: 'top' }}
-          onClick={() => console.log('Excluir', rowData)}
+          onClick={() => handleExcluir(rowData)}
         />
       </div>
     );
@@ -99,6 +167,7 @@ export function PessoasPesquisa() {
 
   return (
     <div className="container py-4">
+      <Toast ref={toast} />
       <Tooltip target="[data-pr-tooltip], .p-button" />
 
       <div className="surface-card p-4 shadow-1 border-round">
@@ -127,6 +196,7 @@ export function PessoasPesquisa() {
               type="submit"
               label="Pesquisar"
               icon="pi pi-search"
+              loading={loading}
               className="w-auto"
             />
             <Button
@@ -155,9 +225,15 @@ export function PessoasPesquisa() {
         <div className="mt-4">
           <DataTable
             value={pessoas}
+            loading={loading}
             paginator
-            rows={5}
+            rows={linhas}
+            totalRecords={totalRecords}
             rowsPerPageOptions={[5, 10, 20]}
+            onPage={(e) => {
+              setPagina(e.page ?? 0);
+              setLinhas(e.rows);
+            }}
             stripedRows
             showGridlines
             emptyMessage={
@@ -167,16 +243,22 @@ export function PessoasPesquisa() {
             }
           >
             <Column field="nome" header="Nome" />
-            <Column field="cidade" header="Cidade" />
             <Column
-              field="estado"
+              field="endereco.cidade"
+              header="Cidade"
+              body={(row: Pessoa) => row.endereco?.cidade || '-'}
+            />
+            <Column
+              field="endereco.estado"
               header="Estado"
-              body={(row) => <div className="text-center">{row.estado}</div>}
+              body={(row: Pessoa) => (
+                <div className="text-center">{row.endereco?.estado || '-'}</div>
+              )}
               style={{ width: '120px' }}
             />
             <Column
               header="Status"
-              body={(row) => <div className="text-center">{statusBodyTemplate(row)}</div>}
+              body={statusBodyTemplate}
               style={{ width: '130px' }}
             />
             <Column

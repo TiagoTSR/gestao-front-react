@@ -1,108 +1,114 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { InputText } from 'primereact/inputtext';
 import { Button } from 'primereact/button';
 import { DataTable } from 'primereact/datatable';
 import { Column } from 'primereact/column';
 import { Tooltip } from 'primereact/tooltip';
-import { Lancamento } from '../../types/lancamento';
-
-const LANCAMENTOS_INICIAIS: Lancamento[] = [
-  {
-    tipo: 'DESPESA',
-    descricao: 'Compra de pão',
-    dataVencimento: '30/06/2017',
-    dataPagamento: null,
-    valor: 4.55,
-    pessoa: 'Padaria do José',
-  },
-  {
-    tipo: 'RECEITA',
-    descricao: 'Venda de software',
-    dataVencimento: '10/06/2017',
-    dataPagamento: '09/06/2017',
-    valor: 80000,
-    pessoa: 'Atacado Brasil',
-  },
-  {
-    tipo: 'DESPESA',
-    descricao: 'Impostos',
-    dataVencimento: '20/07/2017',
-    dataPagamento: null,
-    valor: 14312,
-    pessoa: 'Ministério da Fazenda',
-  },
-  {
-    tipo: 'DESPESA',
-    descricao: 'Mensalidade de escola',
-    dataVencimento: '05/06/2017',
-    dataPagamento: '30/05/2017',
-    valor: 800,
-    pessoa: 'Escola Abelha Rainha',
-  },
-  {
-    tipo: 'RECEITA',
-    descricao: 'Venda de carro',
-    dataVencimento: '18/08/2017',
-    dataPagamento: null,
-    valor: 55000,
-    pessoa: 'Sebastião Souza',
-  },
-  {
-    tipo: 'DESPESA',
-    descricao: 'Aluguel',
-    dataVencimento: '10/07/2017',
-    dataPagamento: '09/07/2017',
-    valor: 1750,
-    pessoa: 'Casa Nova Imóveis',
-  },
-  {
-    tipo: 'DESPESA',
-    descricao: 'Mensalidade musculação',
-    dataVencimento: '13/07/2017',
-    dataPagamento: null,
-    valor: 180,
-    pessoa: 'Academia Top',
-  },
-];
+import { Toast } from 'primereact/toast';
+import { Lancamento, PageResult } from '@/models';
+import { LancamentoService } from '@/services';
 
 export function LancamentosPesquisa() {
   const router = useRouter();
+  const toast = useRef<Toast>(null);
+
   const [descricaoFiltro, setDescricaoFiltro] = useState('');
   const [dataVencimentoDe, setDataVencimentoDe] = useState('');
   const [dataVencimentoAte, setDataVencimentoAte] = useState('');
-  const [lancamentos, setLancamentos] = useState<Lancamento[]>(LANCAMENTOS_INICIAIS);
+  const [lancamentos, setLancamentos] = useState<Lancamento[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [pagina, setPagina] = useState(0);
+  const [linhas, setLinhas] = useState(5);
 
-  const formatarMoeda = (valor: number) => {
-    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-  };
+  const carregarLancamentos = useCallback(
+    async (page = 0, size = 5) => {
+      setLoading(true);
+      try {
+        const resultado: PageResult<Lancamento> = await LancamentoService.listar(
+          {
+            descricao: descricaoFiltro || undefined,
+            data_vencimento_de: dataVencimentoDe || undefined,
+            data_vencimento_ate: dataVencimentoAte || undefined,
+          },
+          {
+            pagina: page,
+            tamanho: size,
+          }
+        );
+        setLancamentos(resultado.conteudo || []);
+        setTotalRecords(resultado.total_elementos || 0);
+      } catch (error) {
+        console.error('Erro ao carregar lançamentos do backend:', error);
+        toast.current?.show({
+          severity: 'error',
+          summary: 'Erro',
+          detail: 'Não foi possível carregar os lançamentos.',
+          life: 4000,
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [descricaoFiltro, dataVencimentoDe, dataVencimentoAte]
+  );
+
+  useEffect(() => {
+    carregarLancamentos(pagina, linhas);
+  }, [carregarLancamentos, pagina, linhas]);
 
   const handlePesquisar = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Pesquisando por:', {
-      descricao: descricaoFiltro,
-      de: dataVencimentoDe,
-      ate: dataVencimentoAte,
-    });
-
-    if (!descricaoFiltro.trim()) {
-      setLancamentos(LANCAMENTOS_INICIAIS);
-      return;
-    }
-
-    const filtrados = LANCAMENTOS_INICIAIS.filter((l) =>
-      l.descricao.toLowerCase().includes(descricaoFiltro.toLowerCase())
-    );
-    setLancamentos(filtrados);
+    setPagina(0);
+    carregarLancamentos(0, linhas);
   };
 
   const handleLimpar = () => {
     setDescricaoFiltro('');
     setDataVencimentoDe('');
     setDataVencimentoAte('');
-    setLancamentos(LANCAMENTOS_INICIAIS);
+    setPagina(0);
+  };
+
+  const handleExcluir = async (lancamento: Lancamento) => {
+    if (!lancamento.id) return;
+    if (!confirm(`Deseja realmente excluir o lançamento "${lancamento.descricao}"?`)) return;
+
+    try {
+      await LancamentoService.remover(lancamento.id);
+      toast.current?.show({
+        severity: 'success',
+        summary: 'Sucesso',
+        detail: 'Lançamento excluído com sucesso!',
+        life: 3000,
+      });
+      carregarLancamentos(pagina, linhas);
+    } catch (error) {
+      console.error('Erro ao excluir lançamento:', error);
+      toast.current?.show({
+        severity: 'error',
+        summary: 'Erro',
+        detail: 'Erro ao excluir o lançamento.',
+        life: 4000,
+      });
+    }
+  };
+
+  const formatarMoeda = (valor: number) => {
+    return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  };
+
+  const formatarData = (dataIso?: string | null) => {
+    if (!dataIso) return '-';
+    // Se vier no formato yyyy-mm-dd
+    const partes = dataIso.split('-');
+    if (partes.length === 3) {
+      return `${partes[2]}/${partes[1]}/${partes[0]}`;
+    }
+    return dataIso;
   };
 
   const valorBodyTemplate = (rowData: Lancamento) => {
@@ -112,10 +118,6 @@ export function LancamentosPesquisa() {
         {formatarMoeda(rowData.valor)}
       </span>
     );
-  };
-
-  const pagamentoBodyTemplate = (rowData: Lancamento) => {
-    return <span>{rowData.dataPagamento || '-'}</span>;
   };
 
   const acoesBodyTemplate = (rowData: Lancamento) => {
@@ -142,7 +144,7 @@ export function LancamentosPesquisa() {
           aria-label="Excluir"
           tooltip="Excluir"
           tooltipOptions={{ position: 'top' }}
-          onClick={() => console.log('Excluir', rowData)}
+          onClick={() => handleExcluir(rowData)}
         />
       </div>
     );
@@ -150,6 +152,7 @@ export function LancamentosPesquisa() {
 
   return (
     <div className="container py-4">
+      <Toast ref={toast} />
       <Tooltip target=".p-button" />
 
       <div className="surface-card p-4 shadow-1 border-round">
@@ -199,6 +202,7 @@ export function LancamentosPesquisa() {
                 type="submit"
                 label="Pesquisar"
                 icon="pi pi-search"
+                loading={loading}
                 className="w-auto"
               />
               <Button
@@ -228,9 +232,15 @@ export function LancamentosPesquisa() {
         <div className="mt-4">
           <DataTable
             value={lancamentos}
+            loading={loading}
             paginator
-            rows={5}
+            rows={linhas}
+            totalRecords={totalRecords}
             rowsPerPageOptions={[5, 10, 20]}
+            onPage={(e) => {
+              setPagina(e.page ?? 0);
+              setLinhas(e.rows);
+            }}
             stripedRows
             showGridlines
             emptyMessage={
@@ -239,24 +249,32 @@ export function LancamentosPesquisa() {
               </div>
             }
           >
-            <Column field="pessoa" header="Pessoa" />
+            <Column
+              field="pessoa.nome"
+              header="Pessoa"
+              body={(row: Lancamento) => row.pessoa?.nome || '-'}
+            />
             <Column field="descricao" header="Descrição" />
             <Column
-              field="dataVencimento"
+              field="data_vencimento"
               header="Vencimento"
-              body={(row) => <div className="text-center">{row.dataVencimento}</div>}
+              body={(row: Lancamento) => (
+                <div className="text-center">{formatarData(row.data_vencimento)}</div>
+              )}
               style={{ width: '140px' }}
             />
             <Column
-              field="dataPagamento"
+              field="data_pagamento"
               header="Pagamento"
-              body={(row) => <div className="text-center">{pagamentoBodyTemplate(row)}</div>}
+              body={(row: Lancamento) => (
+                <div className="text-center">{formatarData(row.data_pagamento)}</div>
+              )}
               style={{ width: '140px' }}
             />
             <Column
               field="valor"
               header="Valor"
-              body={(row) => <div className="text-right">{valorBodyTemplate(row)}</div>}
+              body={valorBodyTemplate}
               style={{ width: '150px' }}
             />
             <Column
