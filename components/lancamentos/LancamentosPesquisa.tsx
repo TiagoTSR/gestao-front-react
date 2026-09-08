@@ -125,6 +125,7 @@ export function LancamentosPesquisa() {
           rounded
           text
           size="small"
+          aria-label="Editar"
           tooltip="Editar"
           tooltipOptions={{ position: 'top' }}
           onClick={() => console.log('Editar', rowData)}
@@ -136,6 +137,7 @@ export function LancamentosPesquisa() {
           rounded
           text
           size="small"
+          aria-label="Excluir"
           tooltip="Excluir"
           tooltipOptions={{ position: 'top' }}
           onClick={() => console.log('Excluir', rowData)}

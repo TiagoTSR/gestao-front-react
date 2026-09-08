@@ -32,6 +32,32 @@ body {
   color: #10b981;
 }
 
+.status-ativo {
+  color: #10b981;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.status-ativo:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
+.status-inativo {
+  color: #ef4444;
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.status-inativo:hover {
+  text-decoration: underline;
+  opacity: 0.85;
+}
+
 /* ==========================================================================
    Navbar e Gaveta Lateral (Drawer)
    ========================================================================== */
