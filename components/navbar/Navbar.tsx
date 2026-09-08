@@ -1,45 +1,96 @@
 'use client';
 
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 export function Navbar() {
-  const pathname = usePathname();
+  const [exibindoMenu, setExibindoMenu] = useState(false);
+  const [usuarioLogado] = useState('Tiago Silva');
 
-  const isActive = (path: string) => pathname === path;
+  const alternarMenu = () => {
+    setExibindoMenu((prev) => !prev);
+  };
+
+  const fecharMenu = () => {
+    setExibindoMenu(false);
+  };
 
   return (
-    <header className="bg-blue-600 text-white shadow-2 py-3 px-4 flex justify-content-between align-items-center">
-      <Link href="/" className="flex align-items-center gap-2 text-white no-underline">
-        <i className="pi pi-wallet text-2xl"></i>
-        <span className="text-xl font-bold">Gestão Financeira</span>
-      </Link>
-      <nav className="flex align-items-center gap-4">
-        <Link
-          href="/lancamentos"
-          className={`text-white no-underline hover:text-blue-200 flex align-items-center gap-2 ${
-            isActive('/lancamentos') ? 'font-bold underline' : ''
-          }`}
-        >
-          <i className="pi pi-list"></i> Lançamentos
-        </Link>
-        <Link
-          href="/pessoas"
-          className={`text-white no-underline hover:text-blue-200 flex align-items-center gap-2 ${
-            isActive('/pessoas') ? 'font-bold underline' : ''
-          }`}
-        >
-          <i className="pi pi-users"></i> Pessoas
-        </Link>
-        <Link
-          href="/categorias"
-          className={`text-white no-underline hover:text-blue-200 flex align-items-center gap-2 ${
-            isActive('/categorias') ? 'font-bold underline' : ''
-          }`}
-        >
-          <i className="pi pi-tags"></i> Categorias
-        </Link>
-      </nav>
-    </header>
+    <nav className="navbar">
+      <div className="container flex align-items-center justify-content-between">
+        {/* Lado Esquerdo: Toggle e Logo */}
+        <div className="flex align-items-center gap-3">
+          <button
+            type="button"
+            className="navbar-toggle"
+            onClick={alternarMenu}
+            aria-label="Alternar menu de navegação"
+          >
+            <i className="pi pi-bars text-xl"></i>
+          </button>
+
+          <Link href="/" className="navbar-brand flex align-items-center gap-2 text-white no-underline">
+            <i className="pi pi-wallet text-2xl text-white"></i>
+            <span className="font-bold text-xl text-white">Gestão Financeira</span>
+          </Link>
+        </div>
+
+        {/* Lado Direito: Nome do Usuário no Desktop */}
+        <div className="hidden md:flex align-items-center gap-2 text-white">
+          <i className="pi pi-user text-lg"></i>
+          <span className="font-medium text-sm">{usuarioLogado}</span>
+        </div>
+      </div>
+
+      {/* Backdrop Escuro (fecha ao clicar fora) */}
+      {exibindoMenu && (
+        <div
+          className="navbar-backdrop"
+          onClick={fecharMenu}
+          data-testid="navbar-backdrop"
+        />
+      )}
+
+      {/* Gaveta Lateral do Menu */}
+      <aside className={`navbar-menu ${exibindoMenu ? 'navbar-menu-aberto' : ''}`}>
+        {/* Cabeçalho do Menu com Usuário e Botão de Fechar */}
+        <div className="navbar-usuario flex align-items-center justify-content-between">
+          <div className="flex align-items-center gap-2">
+            <i className="pi pi-user"></i>
+            <span>{usuarioLogado}</span>
+          </div>
+          <button
+            type="button"
+            className="btn-fechar"
+            onClick={fecharMenu}
+            aria-label="Fechar menu"
+          >
+            <i className="pi pi-times"></i>
+          </button>
+        </div>
+
+        {/* Itens de Navegação */}
+        <ul className="navbar-menu-items">
+          <li>
+            <Link href="/lancamentos" onClick={fecharMenu}>
+              <i className="pi pi-money-bill"></i>
+              <span>Lançamentos</span>
+            </Link>
+          </li>
+          <li>
+            <Link href="/pessoas" onClick={fecharMenu}>
+              <i className="pi pi-users"></i>
+              <span>Pessoas</span>
+            </Link>
+          </li>
+          <li className="item-logout">
+            <a href="#" onClick={(e) => { e.preventDefault(); fecharMenu(); }}>
+              <i className="pi pi-sign-out"></i>
+              <span>Logout</span>
+            </a>
+          </li>
+        </ul>
+      </aside>
+    </nav>
   );
 }
