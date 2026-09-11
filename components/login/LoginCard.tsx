@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -7,7 +7,7 @@ import { Button } from 'primereact/button';
 import { useAuth } from '../../context/AuthContext';
 
 export function LoginCard() {
-  const [usuario, setUsuario] = useState('');
+  const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [submetido, setSubmetido] = useState(false);
@@ -21,16 +21,16 @@ export function LoginCard() {
     setSubmetido(true);
     setErro(null);
 
-    if (!usuario.trim() || !senha.trim()) {
+    if (!email.trim() || !senha.trim()) {
       return;
     }
 
     try {
       setCarregando(true);
-      await login(usuario.trim(), senha.trim());
+      await login(email.trim(), senha.trim());
       router.push('/lancamentos');
     } catch {
-      setErro('Usuário ou senha inválidos. Verifique suas credenciais.');
+      setErro('E-mail ou senha inválidos. Verifique suas credenciais.');
     } finally {
       setCarregando(false);
     }
@@ -63,23 +63,24 @@ export function LoginCard() {
         {/* Formulário de Login */}
         <form onSubmit={handleLogin} className="flex flex-column gap-4" noValidate>
           <div className="flex flex-column gap-2">
-            <label htmlFor="usuario" className="font-semibold text-slate-700 text-sm">
-              Usuário *
+            <label htmlFor="email" className="font-semibold text-slate-700 text-sm">
+              E-mail *
             </label>
             <div className="p-input-icon-left w-full">
-              <i className="pi pi-user text-slate-400" />
+              <i className="pi pi-envelope text-slate-400" />
               <InputText
-                id="usuario"
-                value={usuario}
-                onChange={(e) => setUsuario(e.target.value)}
-                placeholder="Ex: admin"
-                className={`w-full ${submetido && !usuario.trim() ? 'p-invalid' : ''}`}
-                autoComplete="username"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Ex: admin@example.com"
+                className={`w-full ${submetido && !email.trim() ? 'p-invalid' : ''}`}
+                autoComplete="email"
                 disabled={carregando}
               />
             </div>
-            {submetido && !usuario.trim() && (
-              <small className="p-error">Informe o nome de usuário.</small>
+            {submetido && !email.trim() && (
+              <small className="p-error">Informe o e-mail.</small>
             )}
           </div>
 
@@ -117,7 +118,7 @@ export function LoginCard() {
 
         <div className="mt-4 text-center">
           <span className="text-xs text-slate-400">
-            Credenciais padrão: <strong>admin</strong> / <strong>admin</strong>
+            Credenciais padrão: <strong>admin@example.com</strong> / <strong>admin</strong>
           </span>
         </div>
       </div>

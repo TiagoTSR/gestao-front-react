@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
@@ -31,7 +31,7 @@ export function Navbar() {
     router.push('/login');
   };
 
-  const nomeExibicao = usuario || 'Usuário';
+  const nomeExibicao = usuario?.nome || usuario?.email || 'Usuário';
 
   return (
     <nav className="navbar">

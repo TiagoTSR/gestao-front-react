@@ -1,5 +1,18 @@
 import { Endereco } from './endereco.model';
 
+export interface PessoaForm {
+  id?: number;
+  nome: string;
+  logradouro: string;
+  numero: string;
+  complemento: string;
+  bairro: string;
+  cep: string;
+  cidade: string;
+  estado: string;
+  ativo: boolean;
+}
+
 export interface Pessoa {
   id?: number;
   nome: string;

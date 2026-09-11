@@ -1,4 +1,4 @@
-﻿import axios from 'axios';
+import axios from 'axios';
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080',
@@ -7,17 +7,17 @@ export const api = axios.create({
   },
 });
 
-// Interceptor para injetar autenticacao HTTP Basic em todas as requisicoes
+// Interceptor para injetar o Token JWT (Bearer) em todas as requisições
 api.interceptors.request.use((config) => {
-  // Se a requisicao ja possui Authorization definida (ex: teste de login), mantem
+  // Se a requisição já possui Authorization definida explicitamente, mantém
   if (config.headers.Authorization) {
     return config;
   }
 
   if (typeof window !== 'undefined') {
-    const storedAuth = localStorage.getItem('basic_auth');
-    if (storedAuth) {
-      config.headers.Authorization = `Basic ${storedAuth}`;
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
   }
   return config;
@@ -29,8 +29,9 @@ api.interceptors.response.use(
   (error) => {
     if (error.response && error.response.status === 401) {
       if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        localStorage.removeItem('basic_auth');
+        localStorage.removeItem('access_token');
         localStorage.removeItem('usuario_logado');
+        localStorage.removeItem('basic_auth');
         window.location.href = '/login';
       }
     }

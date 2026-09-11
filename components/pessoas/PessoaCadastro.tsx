@@ -130,7 +130,7 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
       if (onSalvar) {
         onSalvar(pessoa);
       } else {
-        const payload: CriarPessoaRequest | AtualizarPessoaRequest = {
+        const payload = {
           nome: pessoa.nome.trim(),
           ativo: pessoa.ativo,
           endereco: {
@@ -145,7 +145,7 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
         };
 
         if (editando && pessoaId) {
-          await PessoaService.atualizar(pessoaId, payload);
+          await PessoaService.atualizar(pessoaId, payload as AtualizarPessoaRequest);
           toast.current?.show({
             severity: 'success',
             summary: 'Sucesso',
@@ -230,7 +230,7 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
                 <InputText
                   id="nome"
                   value={pessoa.nome}
-                  onChange={(e) => setPessoa((prev) => ({ ...prev, nome: e.target.value }))}
+                  onChange={(e) => setPessoa((prev: PessoaForm) => ({ ...prev, nome: e.target.value }))}
                   onBlur={() => markTouched('nome')}
                   maxLength={50}
                   placeholder="Digite o nome completo"
@@ -255,7 +255,7 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
                   id="logradouro"
                   value={pessoa.logradouro}
                   onChange={(e) =>
-                    setPessoa((prev) => ({ ...prev, logradouro: e.target.value }))
+                    setPessoa((prev: PessoaForm) => ({ ...prev, logradouro: e.target.value }))
                   }
                   onBlur={() => markTouched('logradouro')}
                   maxLength={50}
@@ -276,7 +276,7 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
                 <InputText
                   id="numero"
                   value={pessoa.numero}
-                  onChange={(e) => setPessoa((prev) => ({ ...prev, numero: e.target.value }))}
+                  onChange={(e) => setPessoa((prev: PessoaForm) => ({ ...prev, numero: e.target.value }))}
                   onBlur={() => markTouched('numero')}
                   maxLength={10}
                   placeholder="Ex: 123"
@@ -297,7 +297,7 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
                   id="complemento"
                   value={pessoa.complemento}
                   onChange={(e) =>
-                    setPessoa((prev) => ({ ...prev, complemento: e.target.value }))
+                    setPessoa((prev: PessoaForm) => ({ ...prev, complemento: e.target.value }))
                   }
                   maxLength={50}
                   placeholder="Ex: Apto 102, Bloco B"
@@ -313,7 +313,7 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
                 <InputText
                   id="bairro"
                   value={pessoa.bairro}
-                  onChange={(e) => setPessoa((prev) => ({ ...prev, bairro: e.target.value }))}
+                  onChange={(e) => setPessoa((prev: PessoaForm) => ({ ...prev, bairro: e.target.value }))}
                   onBlur={() => markTouched('bairro')}
                   maxLength={50}
                   placeholder="Ex: Centro"
@@ -336,11 +336,11 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
                   value={pessoa.cep}
                   onChange={(e: any) => {
                     const val = e?.value || e?.target?.value || '';
-                    setPessoa((prev) => ({ ...prev, cep: val }));
+                    setPessoa((prev: PessoaForm) => ({ ...prev, cep: val }));
                   }}
                   onInput={(e: any) => {
                     const val = e?.target?.value || e?.value || '';
-                    setPessoa((prev) => ({ ...prev, cep: val }));
+                    setPessoa((prev: PessoaForm) => ({ ...prev, cep: val }));
                   }}
                   placeholder="00000-000"
                   className="w-full"
@@ -355,7 +355,7 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
                 <InputText
                   id="cidade"
                   value={pessoa.cidade}
-                  onChange={(e) => setPessoa((prev) => ({ ...prev, cidade: e.target.value }))}
+                  onChange={(e) => setPessoa((prev: PessoaForm) => ({ ...prev, cidade: e.target.value }))}
                   onBlur={() => markTouched('cidade')}
                   maxLength={40}
                   placeholder="Ex: São Paulo"
@@ -380,7 +380,7 @@ export function PessoaCadastro({ idProp, onSalvar, onVoltar }: PessoaCadastroPro
                   id="estado"
                   value={pessoa.estado}
                   onChange={(e) =>
-                    setPessoa((prev) => ({
+                    setPessoa((prev: PessoaForm) => ({
                       ...prev,
                       estado: e.target.value.toUpperCase(),
                     }))

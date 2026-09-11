@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { Navbar } from './Navbar';
@@ -14,8 +14,11 @@ vi.mock('next/navigation', () => ({
 
 describe('Navbar', () => {
   beforeEach(() => {
-    localStorage.setItem('usuario_logado', 'admin');
-    localStorage.setItem('basic_auth', btoa('admin:admin'));
+    localStorage.setItem(
+      'usuario_logado',
+      JSON.stringify({ nome: 'Administrador', email: 'admin@example.com', permissoes: [] })
+    );
+    localStorage.setItem('access_token', 'token_teste_123');
     vi.clearAllMocks();
   });
 
@@ -40,7 +43,7 @@ describe('Navbar', () => {
 
   it('deve inicializar com o usuário logado correto', () => {
     renderComponent();
-    expect(screen.getAllByText('admin').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Administrador').length).toBeGreaterThan(0);
   });
 
   it('deve alternar o estado do menu ao clicar no botão toggle', () => {

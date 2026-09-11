@@ -1,14 +1,23 @@
-﻿'use client';
+'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import axios from 'axios';
 
-interface AuthContextType {
-  usuario: string | null;
+export interface UsuarioLogado {
+  nome: string;
+  email: string;
+  permissoes: string[];
+}
+
+export interface AuthContextType {
+  usuario: UsuarioLogado | null;
+  nomeUsuario: string | null;
+  token: string | null;
   estaAutenticado: boolean;
   carregando: boolean;
-  login: (usuario: string, senha: string) => Promise<void>;
+  login: (email: string, pass: string) => Promise<void>;
   logout: () => void;
+  temPermissao: (permissao: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -16,56 +25,75 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [usuario, setUsuario] = useState<string | null>(null);
+  const [usuario, setUsuario] = useState<UsuarioLogado | null>(null);
+  const [token, setToken] = useState<string | null>(null);
   const [carregando, setCarregando] = useState<boolean>(true);
 
   useEffect(() => {
     // Carrega sessao do localStorage no cliente
     if (typeof window !== 'undefined') {
+      const storedToken = localStorage.getItem('access_token');
       const storedUser = localStorage.getItem('usuario_logado');
-      const storedAuth = localStorage.getItem('basic_auth');
-      if (storedUser && storedAuth) {
-        setUsuario(storedUser);
+      if (storedToken && storedUser) {
+        try {
+          const parsedUser: UsuarioLogado = JSON.parse(storedUser);
+          setToken(storedToken);
+          setUsuario(parsedUser);
+        } catch {
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('usuario_logado');
+        }
       }
     }
     setCarregando(false);
   }, []);
 
-  const login = async (user: string, pass: string) => {
-    const credentials = btoa(`${user}:${pass}`);
-
-    // Valida credenciais com uma chamada rapida ao backend
-    await axios.get(`${API_URL}/categorias`, {
-      params: { pagina: 0, tamanho: 1 },
-      headers: {
-        Authorization: `Basic ${credentials}`,
-      },
+  const login = async (email: string, pass: string) => {
+    const { data } = await axios.post(`${API_URL}/login`, {
+      email: email.trim(),
+      senha: pass.trim(),
     });
 
-    // Se a chamada responder 200 OK, grava a sessao
+    const usuarioObj: UsuarioLogado = {
+      nome: data.nome,
+      email: data.email,
+      permissoes: data.permissoes || [],
+    };
+
     if (typeof window !== 'undefined') {
-      localStorage.setItem('basic_auth', credentials);
-      localStorage.setItem('usuario_logado', user);
+      localStorage.setItem('access_token', data.access_token);
+      localStorage.setItem('usuario_logado', JSON.stringify(usuarioObj));
     }
-    setUsuario(user);
+
+    setToken(data.access_token);
+    setUsuario(usuarioObj);
   };
 
   const logout = () => {
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('basic_auth');
+      localStorage.removeItem('access_token');
       localStorage.removeItem('usuario_logado');
+      localStorage.removeItem('basic_auth');
     }
+    setToken(null);
     setUsuario(null);
+  };
+
+  const temPermissao = (permissao: string): boolean => {
+    return usuario?.permissoes?.includes(permissao) ?? false;
   };
 
   return (
     <AuthContext.Provider
       value={{
         usuario,
-        estaAutenticado: !!usuario,
+        nomeUsuario: usuario ? usuario.nome || usuario.email : null,
+        token,
+        estaAutenticado: !!token && !!usuario,
         carregando,
         login,
         logout,
+        temPermissao,
       }}
     >
       {children}
