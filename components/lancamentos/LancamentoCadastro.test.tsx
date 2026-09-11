@@ -3,7 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { LancamentoCadastro } from './LancamentoCadastro';
 import { PrimeProvider } from '../providers/PrimeProvider';
-import { CategoriaService, PessoaService } from '@/services';
+import { CategoriaService, PessoaService, LancamentoService } from '@/services';
 
 describe('LancamentoCadastro', () => {
   beforeEach(() => {
@@ -19,6 +19,17 @@ describe('LancamentoCadastro', () => {
       total_elementos: 1,
       total_paginas: 1,
     });
+    vi.spyOn(LancamentoService, 'buscarPorId').mockResolvedValue({
+      id: 1,
+      tipo: 'DESPESA',
+      descricao: 'Supermercado Mensal',
+      data_vencimento: '2026-09-20',
+      data_pagamento: '2026-09-18',
+      valor: 450.5,
+      observacao: 'Compras do mês',
+      categoria: { id: 1, nome: 'Alimentação' },
+      pessoa: { id: 1, nome: 'João da Silva', ativo: true },
+    });
   });
 
   const renderComponente = (props = {}) =>
@@ -28,10 +39,20 @@ describe('LancamentoCadastro', () => {
       </PrimeProvider>
     );
 
-  it('deve criar o componente e renderizar o título da página', () => {
+  it('deve criar o componente e renderizar o título da página no modo de criação', async () => {
     renderComponente();
-    const titulo = screen.getByRole('heading', { level: 1, name: /novo lançamento/i });
+    const titulo = await screen.findByRole('heading', { level: 1, name: /novo lançamento/i });
     expect(titulo).toBeInTheDocument();
+  });
+
+  it('deve carregar dados e exibir título de edição quando idProp for informado', async () => {
+    renderComponente({ idProp: 1 });
+
+    await waitFor(() => {
+      expect(LancamentoService.buscarPorId).toHaveBeenCalledWith(1);
+      expect(screen.getByRole('heading', { level: 1, name: /edição de lançamento/i })).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Supermercado Mensal')).toBeInTheDocument();
+    });
   });
 
   it('deve carregar as listas de categorias e pessoas do serviço', async () => {
@@ -42,11 +63,11 @@ describe('LancamentoCadastro', () => {
     });
   });
 
-  it('deve renderizar os botões Salvar, Novo e Voltar', () => {
+  it('deve renderizar os botões Salvar, Novo e Voltar', async () => {
     renderComponente();
-    expect(screen.getByRole('button', { name: /salvar/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /novo/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /voltar/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /salvar/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /novo/i })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /voltar/i })).toBeInTheDocument();
   });
 
   it('deve chamar a função onSalvar ao submeter o formulário', () => {

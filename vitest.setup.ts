@@ -13,4 +13,26 @@ vi.mock('next/navigation', () => ({
   }),
   usePathname: () => '/',
   useSearchParams: () => new URLSearchParams(),
+  useParams: () => ({}),
 }));
+
+import React from 'react';
+
+// Mock global do Next.js Link para evitar erro de navegação no JSDOM
+vi.mock('next/link', () => ({
+  default: ({ children, href, onClick, ...rest }: any) =>
+    React.createElement(
+      'a',
+      {
+        href,
+        onClick: (e: React.MouseEvent) => {
+          e.preventDefault();
+          onClick?.(e);
+        },
+        ...rest,
+      },
+      children
+    ),
+}));
+
+

@@ -6,6 +6,16 @@ import { PrimeProvider } from '../providers/PrimeProvider';
 import { LancamentoService } from '@/services';
 import { Lancamento, PageResult } from '@/models';
 
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+  useParams: () => ({}),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 const MOCK_LANCAMENTOS: PageResult<Lancamento> = {
   conteudo: [
     {
@@ -68,6 +78,7 @@ const MOCK_LANCAMENTOS: PageResult<Lancamento> = {
 describe('LancamentosPesquisa', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockPush.mockReset();
     vi.spyOn(LancamentoService, 'listar').mockResolvedValue(MOCK_LANCAMENTOS);
   });
 
@@ -80,7 +91,7 @@ describe('LancamentosPesquisa', () => {
 
   it('deve renderizar o título da página no documento', async () => {
     renderComponente();
-    const titulo = screen.getByRole('heading', { level: 1, name: /lançamentos/i });
+    const titulo = await screen.findByRole('heading', { level: 1, name: /lançamentos/i });
     expect(titulo).toBeInTheDocument();
   });
 
@@ -88,42 +99,53 @@ describe('LancamentosPesquisa', () => {
     renderComponente();
     const headersEsperados = ['Pessoa', 'Descrição', 'Vencimento', 'Pagamento', 'Valor', 'Ações'];
 
-    headersEsperados.forEach((header) => {
-      expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
-    });
+    for (const header of headersEsperados) {
+      expect(await screen.findByRole('columnheader', { name: header })).toBeInTheDocument();
+    }
   });
 
   it('deve renderizar as linhas da tabela após carregar do serviço', async () => {
     renderComponente();
-    await waitFor(() => {
-      expect(screen.getByText('Compra de pão')).toBeInTheDocument();
-      expect(screen.getByText('Padaria do José')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Compra de pão')).toBeInTheDocument();
+    expect(await screen.findByText('Padaria do José')).toBeInTheDocument();
   });
 
   it('deve aplicar classe text-danger para despesa e text-success para receita', async () => {
     renderComponente();
-    await waitFor(() => {
-      const firstRowValue = screen.getByText('R$ 4,55');
-      expect(firstRowValue).toHaveClass('text-danger');
+    const firstRowValue = await screen.findByText('R$ 4,55');
+    expect(firstRowValue).toHaveClass('text-danger');
 
-      const secondRowValue = screen.getByText('R$ 80.000,00');
-      expect(secondRowValue).toHaveClass('text-success');
-    });
+    const secondRowValue = await screen.findByText('R$ 80.000,00');
+    expect(secondRowValue).toHaveClass('text-success');
   });
 
   it('deve chamar o serviço com o filtro de descrição ao pesquisar', async () => {
     renderComponente();
 
-    const input = screen.getByPlaceholderText(/digite a descrição para pesquisar/i);
-    const botaoPesquisar = screen.getByRole('button', { name: /pesquisar/i });
+    const input = await screen.findByPlaceholderText(/digite a descrição para pesquisar/i);
+    const botaoPesquisar = await screen.findByRole('button', { name: /pesquisar/i });
 
     fireEvent.change(input, { target: { value: 'Compra de pão' } });
     fireEvent.click(botaoPesquisar);
 
-    expect(LancamentoService.listar).toHaveBeenCalledWith(
-      expect.objectContaining({ descricao: 'Compra de pão' }),
-      expect.anything()
-    );
+    await waitFor(() => {
+      expect(LancamentoService.listar).toHaveBeenCalledWith(
+        expect.objectContaining({ descricao: 'Compra de pão' }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('deve redirecionar para rota de edição ao clicar no botão editar', async () => {
+    renderComponente();
+
+    expect(await screen.findByText('Compra de pão')).toBeInTheDocument();
+
+    const editButtons = screen.getAllByRole('button', { name: /editar/i });
+    expect(editButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(editButtons[0]);
+
+    expect(mockPush).toHaveBeenCalledWith('/lancamentos/1');
   });
 });

@@ -6,8 +6,10 @@ import {
 } from '@/models';
 
 export const CategoriaService = {
-  listar: async (): Promise<Categoria[]> => {
-    const { data } = await api.get<Categoria[]>('/categorias');
+  listar: async (paginacao?: any): Promise<any> => {
+    const { data } = paginacao
+      ? await api.get('/categorias', { params: paginacao })
+      : await api.get('/categorias');
     return data;
   },
 

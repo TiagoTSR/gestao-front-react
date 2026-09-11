@@ -132,7 +132,7 @@ export function LancamentosPesquisa() {
           aria-label="Editar"
           tooltip="Editar"
           tooltipOptions={{ position: 'top' }}
-          onClick={() => console.log('Editar', rowData)}
+          onClick={() => rowData.id && router.push(`/lancamentos/${rowData.id}`)}
         />
         <Button
           type="button"

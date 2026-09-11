@@ -147,7 +147,7 @@ export function PessoasPesquisa() {
           aria-label="Editar"
           tooltip="Editar"
           tooltipOptions={{ position: 'top' }}
-          onClick={() => console.log('Editar', rowData)}
+          onClick={() => rowData.id && router.push(`/pessoas/${rowData.id}`)}
         />
         <Button
           type="button"

@@ -6,6 +6,16 @@ import { PrimeProvider } from '../providers/PrimeProvider';
 import { PessoaService } from '@/services';
 import { PageResult, Pessoa } from '@/models';
 
+const mockPush = vi.fn();
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({
+    push: mockPush,
+  }),
+  useParams: () => ({}),
+  usePathname: () => '/',
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 const MOCK_PESSOAS: PageResult<Pessoa> = {
   conteudo: [
     {
@@ -54,6 +64,7 @@ const MOCK_PESSOAS: PageResult<Pessoa> = {
 describe('PessoasPesquisa', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    mockPush.mockReset();
     vi.spyOn(PessoaService, 'listar').mockResolvedValue(MOCK_PESSOAS);
     vi.spyOn(PessoaService, 'atualizarAtivo').mockResolvedValue();
   });
@@ -65,39 +76,36 @@ describe('PessoasPesquisa', () => {
       </PrimeProvider>
     );
 
-  it('deve criar o componente e renderizar o título da página', () => {
+  it('deve criar o componente e renderizar o título da página', async () => {
     renderComponente();
-    const titulo = screen.getByRole('heading', { level: 1, name: /pessoas/i });
+    const titulo = await screen.findByRole('heading', { level: 1, name: /pessoas/i });
     expect(titulo).toBeInTheDocument();
   });
 
-  it('deve renderizar os cabeçalhos da tabela corretamente', () => {
+  it('deve renderizar os cabeçalhos da tabela corretamente', async () => {
     renderComponente();
     const headersEsperados = ['Nome', 'Cidade', 'Estado', 'Status', 'Ações'];
 
-    headersEsperados.forEach((header) => {
-      expect(screen.getByRole('columnheader', { name: header })).toBeInTheDocument();
-    });
+    for (const header of headersEsperados) {
+      expect(await screen.findByRole('columnheader', { name: header })).toBeInTheDocument();
+    }
   });
 
   it('deve renderizar as pessoas carregadas do serviço', async () => {
     renderComponente();
 
-    await waitFor(() => {
-      expect(screen.getByText('Manoel Pinheiro')).toBeInTheDocument();
-      expect(screen.getByText('Sebastião da Silva')).toBeInTheDocument();
-      expect(screen.getByText('Carla Souza')).toBeInTheDocument();
-    });
+    expect(await screen.findByText('Manoel Pinheiro')).toBeInTheDocument();
+    expect(await screen.findByText('Sebastião da Silva')).toBeInTheDocument();
+    expect(await screen.findByText('Carla Souza')).toBeInTheDocument();
   });
 
   it('deve alternar status ao clicar no link de status da tabela', async () => {
     renderComponente();
 
-    await waitFor(() => {
-      expect(screen.getByText('Manoel Pinheiro')).toBeInTheDocument();
-    });
+    const nomeManoel = await screen.findByText('Manoel Pinheiro');
+    expect(nomeManoel).toBeInTheDocument();
 
-    const linkStatus = screen.getByText('Manoel Pinheiro')
+    const linkStatus = nomeManoel
       .closest('tr')
       ?.querySelector('a') as HTMLElement;
 
@@ -116,15 +124,30 @@ describe('PessoasPesquisa', () => {
   it('deve atualizar o filtro de nome e chamar o serviço ao pesquisar', async () => {
     renderComponente();
 
-    const input = screen.getByPlaceholderText(/digite o nome da pessoa/i);
-    const botaoPesquisar = screen.getByRole('button', { name: /pesquisar/i });
+    const input = await screen.findByPlaceholderText(/digite o nome da pessoa/i);
+    const botaoPesquisar = await screen.findByRole('button', { name: /pesquisar/i });
 
     fireEvent.change(input, { target: { value: 'Carla' } });
     fireEvent.click(botaoPesquisar);
 
-    expect(PessoaService.listar).toHaveBeenCalledWith(
-      expect.objectContaining({ nome: 'Carla' }),
-      expect.anything()
-    );
+    await waitFor(() => {
+      expect(PessoaService.listar).toHaveBeenCalledWith(
+        expect.objectContaining({ nome: 'Carla' }),
+        expect.anything()
+      );
+    });
+  });
+
+  it('deve redirecionar para rota de edição de pessoa ao clicar no botão editar', async () => {
+    renderComponente();
+
+    expect(await screen.findByText('Manoel Pinheiro')).toBeInTheDocument();
+
+    const editButtons = screen.getAllByRole('button', { name: /editar/i });
+    expect(editButtons.length).toBeGreaterThan(0);
+
+    fireEvent.click(editButtons[0]);
+
+    expect(mockPush).toHaveBeenCalledWith('/pessoas/1');
   });
 });

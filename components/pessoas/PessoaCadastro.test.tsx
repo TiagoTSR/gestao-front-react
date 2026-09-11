@@ -1,10 +1,29 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { describe, it, expect, vi } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { PessoaCadastro } from './PessoaCadastro';
 import { PrimeProvider } from '../providers/PrimeProvider';
+import { PessoaService } from '@/services';
 
 describe('PessoaCadastro', () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(PessoaService, 'buscarPorId').mockResolvedValue({
+      id: 1,
+      nome: 'João Silva',
+      ativo: true,
+      endereco: {
+        logradouro: 'Av Paulista',
+        numero: '1000',
+        complemento: 'Apto 101',
+        bairro: 'Bela Vista',
+        cep: '01310-000',
+        cidade: 'São Paulo',
+        estado: 'SP',
+      },
+    });
+  });
+
   const renderComponente = (props = {}) =>
     render(
       <PrimeProvider>
@@ -12,10 +31,21 @@ describe('PessoaCadastro', () => {
       </PrimeProvider>
     );
 
-  it('deve criar o componente e renderizar o título da página', () => {
+  it('deve criar o componente e renderizar o título da página no modo novo', () => {
     renderComponente();
     const titulo = screen.getByRole('heading', { level: 1, name: /nova pessoa/i });
     expect(titulo).toBeInTheDocument();
+  });
+
+  it('deve carregar dados da pessoa e exibir título de edição quando idProp for informado', async () => {
+    renderComponente({ idProp: 1 });
+
+    await waitFor(() => {
+      expect(PessoaService.buscarPorId).toHaveBeenCalledWith(1);
+      expect(screen.getByRole('heading', { level: 1, name: /edição de pessoa/i })).toBeInTheDocument();
+      expect(screen.getByDisplayValue('João Silva')).toBeInTheDocument();
+      expect(screen.getByDisplayValue('Av Paulista')).toBeInTheDocument();
+    });
   });
 
   it('deve renderizar os botões Salvar, Novo e Voltar', () => {
