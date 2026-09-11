@@ -1,11 +1,20 @@
-'use client';
+﻿'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuth } from '../../context/AuthContext';
 
 export function Navbar() {
   const [exibindoMenu, setExibindoMenu] = useState(false);
-  const [usuarioLogado] = useState('Tiago Silva');
+  const pathname = usePathname();
+  const router = useRouter();
+  const { usuario, logout, estaAutenticado } = useAuth();
+
+  // Oculta o navbar na tela de login
+  if (pathname === '/login' || !estaAutenticado) {
+    return null;
+  }
 
   const alternarMenu = () => {
     setExibindoMenu((prev) => !prev);
@@ -14,6 +23,15 @@ export function Navbar() {
   const fecharMenu = () => {
     setExibindoMenu(false);
   };
+
+  const handleLogout = (e: React.MouseEvent) => {
+    e.preventDefault();
+    fecharMenu();
+    logout();
+    router.push('/login');
+  };
+
+  const nomeExibicao = usuario || 'Usuário';
 
   return (
     <nav className="navbar">
@@ -38,7 +56,7 @@ export function Navbar() {
         {/* Lado Direito: Nome do Usuário no Desktop */}
         <div className="hidden md:flex align-items-center gap-2 text-white">
           <i className="pi pi-user text-lg"></i>
-          <span className="font-medium text-sm">{usuarioLogado}</span>
+          <span className="font-medium text-sm">{nomeExibicao}</span>
         </div>
       </div>
 
@@ -57,7 +75,7 @@ export function Navbar() {
         <div className="navbar-usuario flex align-items-center justify-content-between">
           <div className="flex align-items-center gap-2">
             <i className="pi pi-user"></i>
-            <span>{usuarioLogado}</span>
+            <span>{nomeExibicao}</span>
           </div>
           <button
             type="button"
@@ -84,7 +102,7 @@ export function Navbar() {
             </Link>
           </li>
           <li className="item-logout">
-            <a href="#" onClick={(e) => { e.preventDefault(); fecharMenu(); }}>
+            <a href="#" onClick={handleLogout}>
               <i className="pi pi-sign-out"></i>
               <span>Logout</span>
             </a>
