@@ -70,12 +70,12 @@ describe('LancamentoCadastro', () => {
     expect(await screen.findByRole('button', { name: /voltar/i })).toBeInTheDocument();
   });
 
-  it('deve chamar a função onSalvar ao submeter o formulário', () => {
+  it('deve chamar a função onSalvar ao submeter o formulário', async () => {
     const onSalvarMock = vi.fn();
     const consoleSpy = vi.spyOn(console, 'log');
     renderComponente({ onSalvar: onSalvarMock });
 
-    const btnSalvar = screen.getByRole('button', { name: /salvar/i });
+    const btnSalvar = await screen.findByRole('button', { name: /salvar/i });
     fireEvent.click(btnSalvar);
 
     expect(onSalvarMock).toHaveBeenCalled();
@@ -86,25 +86,25 @@ describe('LancamentoCadastro', () => {
     consoleSpy.mockRestore();
   });
 
-  it('deve resetar o formulário ao clicar no botão Novo', () => {
+  it('deve resetar o formulário ao clicar no botão Novo', async () => {
     renderComponente();
 
-    const inputDescricao = screen.getByPlaceholderText(/ex: mensalidade da escola/i) as HTMLInputElement;
+    const inputDescricao = (await screen.findByPlaceholderText(/ex: mensalidade da escola/i)) as HTMLInputElement;
     fireEvent.change(inputDescricao, { target: { value: 'Compra de Notebook' } });
     expect(inputDescricao.value).toBe('Compra de Notebook');
 
-    const btnNovo = screen.getByRole('button', { name: /novo/i });
+    const btnNovo = await screen.findByRole('button', { name: /novo/i });
     fireEvent.click(btnNovo);
 
     expect(inputDescricao.value).toBe('');
   });
 
-  it('deve chamar o callback onVoltar ao clicar no botão Voltar', () => {
+  it('deve chamar o callback onVoltar ao clicar no botão Voltar', async () => {
     const onVoltarMock = vi.fn();
     const consoleSpy = vi.spyOn(console, 'log');
     renderComponente({ onVoltar: onVoltarMock });
 
-    const btnVoltar = screen.getByRole('button', { name: /voltar/i });
+    const btnVoltar = await screen.findByRole('button', { name: /voltar/i });
     fireEvent.click(btnVoltar);
 
     expect(onVoltarMock).toHaveBeenCalled();
