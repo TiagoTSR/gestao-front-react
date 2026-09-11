@@ -9,16 +9,16 @@ export const api = axios.create({
 
 // Interceptor para injetar autenticacao HTTP Basic em todas as requisicoes
 api.interceptors.request.use((config) => {
+  // Se a requisicao ja possui Authorization definida (ex: teste de login), mantem
+  if (config.headers.Authorization) {
+    return config;
+  }
+
   if (typeof window !== 'undefined') {
     const storedAuth = localStorage.getItem('basic_auth');
     if (storedAuth) {
       config.headers.Authorization = `Basic ${storedAuth}`;
-    } else {
-      // Fallback seguro com as credenciais padrao
-      config.headers.Authorization = `Basic ${btoa('admin:admin')}`;
     }
-  } else {
-    config.headers.Authorization = `Basic ${btoa('admin:admin')}`;
   }
   return config;
 });
